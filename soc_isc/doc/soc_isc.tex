@@ -1,0 +1,228 @@
+\documentclass[12pt, a4paper, oneside]{ctexart}
+\usepackage{amsmath, amsthm, amssymb, appendix, bm, graphicx, hyperref, mathrsfs, xcolor}
+\usepackage{listings}
+\usepackage{ctex}
+% 用来设置附录中代码的样式
+
+\lstset{
+    basicstyle          =   \sffamily,          % 基本代码风格
+    keywordstyle        =   \bfseries,          % 关键字风格
+    commentstyle        =   \rmfamily\itshape,  % 注释的风格，斜体
+    stringstyle         =   \ttfamily,  % 字符串风格
+    flexiblecolumns,                % 别问为什么，加上这个
+    numbers             =   left,   % 行号的位置在左边
+    showspaces          =   false,  % 是否显示空格，显示了有点乱，所以不现实了
+    numberstyle         =   \zihao{-5}\ttfamily,    % 行号的样式，小五号，tt等宽字体
+    showstringspaces    =   false,
+    captionpos          =   t,      % 这段代码的名字所呈现的位置，t指的是top上面
+    frame               =   lrtb,   % 显示边框
+}
+
+\lstdefinestyle{Python}{
+    language        =   Python, % 语言选Python
+    basicstyle      =   \zihao{-5}\ttfamily,
+    numberstyle     =   \zihao{-5}\ttfamily,
+    keywordstyle    =   \color{blue},
+    keywordstyle    =   [2] \color{teal},
+    stringstyle     =   \color{magenta},
+    commentstyle    =   \color{red}\ttfamily,
+    breaklines      =   true,   % 自动换行，建议不要写太长的行
+    columns         =   fixed,  % 如果不加这一句，字间距就不固定，很丑，必须加
+    basewidth       =   0.5em,
+}
+
+\title{\textbf{多参考方法中旋轨耦合矩阵元（SOCME)与系间窜越速率（ISC）的计算}}
+\author{Sun Xinyu\\sunxinyu347@gmail.com}
+\date{\today}
+\linespread{1}
+
+
+\begin{document}
+
+\maketitle
+
+\setcounter{page}{0}
+\maketitle
+\thispagestyle{empty}
+
+\newpage
+\pagenumbering{Roman}
+\setcounter{page}{1}
+\tableofcontents
+\newpage
+\setcounter{page}{1}
+\pagenumbering{arabic}
+
+\section{前言}
+
+  系间窜越速率（ISC）常被用于分子发光体系的计算，最常用的方法是TD-DFT，这是因为其计算量小，对大多数有机发光体系支持都很好。其理论基础是Marcus理论，所以也可用于与电子转移速率相关的计算。然而，对于一般的态-态转换反应，单Slater行列式无法准确描述，故使用多参考方法计算。本文以铁配合物三-五重态反应为例，介绍使用多参考方法计算态态转换反应中SOCME和ISC\par
+这是南开大学彭谦课题组新人入组手册系列之一，gitlab地址为$https://github.com/Yxwxwx/Penglab\_tutorial$
+\newpage
+
+\section{旋轨耦合理论基础}
+
+  注意，大家在中级无机化学课程上已经接触过旋轨耦合效应这个概念，用来解释d-d跃迁等。而旋轨耦合效应是Dirac方程的解，必须通过相对论量子力学来解释。\par
+  这里不写公式推导，只摆出来结论。
+
+\subsection{Dirac方程}
+
+  狄拉克方程是薛定谔方程和狭义相对论的结合，其数学形式为:
+\begin{equation}
+[c(\bm{\alpha}\cdot\mathbf{c})+m_0c^2\bm{\beta}+V]\psi=E\psi
+\end{equation}
+其中c为光速，$\bm{p}$为动量算符，$
+\bm{\beta}=
+\begin{bmatrix}
+\bm{I} & 0 \\
+0 & \bm{I}
+\end{bmatrix}
+$,\textbf{I}为单位阵，$
+\bm{\alpha} = 
+\begin{bmatrix}
+\bm{\sigma} & 0 \\
+0 & \bm{\sigma}
+\end{bmatrix}
+$，其中$\bm{\sigma}$为$2\times2$的Pauli自旋矢量
+\begin{equation}
+\bm{\sigma_x} = 
+\begin{bmatrix}
+0 & 1 \\
+1 & 0
+\end{bmatrix},
+\bm{\sigma_y} =
+\begin{bmatrix}
+0 & -i \\
+i & 0
+\end{bmatrix},
+\bm{\sigma_z} =
+\begin{bmatrix}
+1 & 0 \\
+0 & -1
+\end{bmatrix}
+\end{equation}
+他们都是酉矩阵。\par
+显然，这个方程是一个旋量（spinor)方程,本征函数是自旋波函数。
+\begin{equation}
+\psi = 
+\begin{bmatrix}
+\psi_{L,\alpha} \\
+\psi_{L,\beta} \\
+\psi_{S,\alpha} \\
+\psi_{S,\beta}
+\end{bmatrix}
+=
+\begin{bmatrix}
+\psi_{L} \\
+\psi_{S}
+\end{bmatrix}
+\end{equation}
+其中$\psi_L$是大分量，代表电子;$\psi_S$是小分量，代表正电子。\\
+产生反电子的缘由正是因为相对论极限，当光速接近无穷时，$\psi_L = \psi_{Schrodinger}$，$\psi_S$不存在。\par
+相对论量子化学和传统量化在理论表达上差别很大，可以参考doc目录里的《handbook of relativistic quantum chemistry compress》，出自刘文剑老师主编，其中尤其是x2c方法的描述非常详细。
+
+\subsection{旋轨耦合哈密顿量}
+  相对论哈密顿量可以写成
+\begin{equation}
+H_{rel}=H_{sf}+H_{sd}(\bm{\sigma})
+\end{equation}
+前者与Pauli矩阵无关，是标量部分；后者有关，其中最重要的部分是旋轨耦合（SOC）:
+$$
+H_{sd}=\sum_{pq}[h_{sd}]_{pq}a^{\dagger}_pa_q, [h_{sd}]_{pq}=[h_{SO,1e}]_{pq}+[f_{SO,2e}]_{pq}
+$$
+可见旋轨耦合矩阵包括单电子积分和双电子积分两部分。双电子部分处理较困难，一般使用平均场（SOMF）处理，也可以使用有效原子电荷（Zeff）。
+旋轨耦合矩阵元为$(I+J)*(I+J)$的矩阵，包括实部和虚部，如果是三-五重态，则为8*8。
+$$
+[\bm{H}_{SO}]_{IJ}=\langle\Psi_I|H_{sd}|\Psi_J\rangle
+$$
+$\bm{H}_{SO}$的定义不唯一，取决于用什么方法把Dirac方程变换为二分量。比较常用的方法有Breit-Pauli（最常用）、DKn、ZORA。
+\newpage
+
+
+\section{系间窜越速率}
+\subsection{Marcus方程}
+Marcus方程的形式为：
+$$
+\Delta G=\frac{\lambda}{4}\left(1+\frac{\Delta G_0}{\lambda}\right)^2
+$$
+其中$\Delta G$是反应活化能，$\Delta G_0$是Gibbs自由能，$\lambda$是重组能。\\
+其中势能面近似为二次函数，使用四点法近似。其能量变化的表达式为：
+$$
+E=\frac{N_{A}{({\Delta}E_{ST}+\lambda)}^2}{4{\lambda}}
+$$
+其中${\Delta}E_{ST}$为三-五重态基态能量变化量。
+阿伦尼乌斯公式：
+$$
+k=Ae^{-\frac{E}{RT}}
+$$
+其中指前因子A是一个自旋-轨道二者的耦合关系有关的量，其表达式可以写成：
+$$
+A=\frac{2\pi}{\hbar}{|SOCME}|^2\sqrt{\frac{1}{4\pi k_BT\lambda}}
+$$
+\subsection{误差分析}
+因为态-态转换是一个非绝热过程，我们传统计算方法得不到交叉点电子结构，就得不到这个点的能量，也就没法求能垒，所以使用四点法估算，也有其他方法，比如thular的两态自旋混合（TSSM）模型。显然因为我们得不到非绝热势能面交叉点电子结构，也就无法精确态-态转化的耦合量。这个公式对于气相反应从原理上来说很精确，但我们的反应是溶液体系，再能量上有一个与溶液环境有关的分量lambda。如果结果是用作比较，而非绝对值，可以忽略，更精确也只能使用经验参数。此外，误差来源还有四点法估计能垒本身的问题；分子结构对旋轨耦合矩阵元的影响。
+\newpage
+\section{SOCME计算流程}
+\subsection{输入和输出}
+
+我们以五重态氧化亚铁为例，使用orca软件在casscf(6,6)下计算三-五重态之间的旋轨耦合矩阵元。
+关键词为
+\begin{verbatim}
+%pal nprocs 12 end
+%maxcore 3000
+! TightSCF miniprint nopop
+%casscf
+ nel 6
+ norb 6
+   mult 5,3
+  rel 
+  dosoc true
+  PrintLevel 3
+  end
+ maxiter 150
+ CI
+  MaxIter 200
+ end
+end
+%method
+ FrozenCore FC_NONE
+end
+%scf
+ Thresh 1e-12
+ Tcut 1e-14
+end
+\end{verbatim}
+其中开启SOC计算的关键词为$dosoc true$；我把$mult$设置为$3,5$表示让程序搜索三重态基态和五重态基态，如果不设置的话，程序会自动判断到5，计算SOC时候自动识别到3；最终在.out文件中：
+\begin{verbatim}
+------------------------------------
+NONZERO SOC MATRIX ELEMENTS (cm**-1)
+------------------------------------
+
+           Bra                       Ket       
+<Block Root  S    Ms  | HSOC |  Block Root  S    Ms>    =  Real-part     Imaginary part
+--------------------------------------------------------------------------------------
+   1    0  1.0  1.0              0     0  2.0  2.0     -0.221       0.287
+   1    0  1.0  1.0              0     0  2.0  0.0     -0.090      -0.117
+   1    0  1.0  0.0              0     0  2.0  1.0     -0.156   	0.203
+   1    0  1.0  0.0              0     0  2.0  0.0     -0.000   	0.000
+   1    0  1.0  0.0              0     0  2.0 -1.0     -0.156      -0.203
+   1    0  1.0 -1.0              0     0  2.0  0.0     -0.090   	0.117
+   1    0  1.0 -1.0              0     0  2.0 -2.0     -0.221      -0.287
+
+\end{verbatim}
+可以看到，程序输出了非零矩阵元，分别输出了实部和虚部，我们公式要用的SOCME是其模平方：
+$$
+\sqrt{(-0.221)^2+(0.287)^2+( -0.090)^2+( -0.117)^2+(-0.156)^2+(0.203)^2+(-0.156)^2+(      -0.203)^2+( -0.090)^2+(0.117)^2+(-0.221)^2+( -0.287)^2}
+$$
+\subsection{其他}
+\begin{itemize}
+  \item ORCA的CASSCF收敛性并不好，对于大体系建议使用Pyscf/OpenMolcas/Molpro得到收敛的CASSCF自然轨道，传给ORCA
+  \item 建议使用mokit及其小程序选轨道和传轨道（\href{https://gitlab.com/jxzou/mokit}{mokit}） 
+\end{itemize}
+\newpage
+\section{ISC的计算}
+使用我用matlab写的计算器可以很方便的实现计算，程序附带抛物线近似和四点法示意图。
+
+\newpage
+\section{后记}
+doc中ppt是我组会的ppt，exe是我打包好的matlab计算期安装包，不要求电脑中有matlab，安装即用，支持三种能量单位，也可以当个单位转换器使用。input是我例子中的FeO(V)的SOCME计算输入输出文件（输入文件是fch2mkl制作的)，可以用其中的gbw文件作为初猜重复文中的数据。
+\end{document}
