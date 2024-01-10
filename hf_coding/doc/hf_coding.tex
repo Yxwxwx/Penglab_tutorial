@@ -31,7 +31,7 @@
     basewidth       =   0.5em,
 }
 
-\title{\textbf{一个简单的Hartree-Fock代码基于Pyscf}}
+\title{\textbf{Hartree-Fock理论}}
 \author{Sun Xinyu\\sunxinyu347@gmail.com}
 \date{\today}
 \linespread{1}
@@ -60,8 +60,7 @@
 \newpage
 
 \section{Hartree-Fock理论}
-
-  在这里我假设大家已经系统上过“线性代数”这门课，阅读过了Szabo的《Modern Quantum Chemistry》，至少也是阅读了Levine的《Quantum Chemistry》，能看懂我后续的公式。如果看不懂，就需要再仔细看书了。
+本章要求熟练掌握线性代数相关知识，熟悉《结构化学》中，量子力学基础部分。
 
 \subsection{高斯型基函数（GTOs）}
   我们使用的基组函数一般都是GTO，其数学表达形式为$$|\phi^{GTO}\rangle=\left(\frac{2a}{\pi}\right)^{3/4}e^{-a{\bm{r}}^2}$$我们成为原始的Gaussian函数（primitive）；比如STO-3G对于H原子，使用三个GTO拟合一个STO，那么Gaussian函数的线性组合（CGTO）可以写为
@@ -82,28 +81,369 @@ H    S
       0.16885540             0.44463454     
 \end{verbatim}
 
-\subsection{电子积分}
-  这里只介绍HF方法中使用到的电子积分，并不展开其计算公式。
+\subsection{多电子Hartree-Fock近似}
+\subsubsection{Fock算符}
+根据变分原理，对于Slater行列式形式的波函数中，最优的波函数对应的是最低的能量：
+\begin{equation}
+E_0=\langle\Psi_0|\mathbf{H}|\Psi_0\rangle
+\end{equation}
+在单电子近似下，我们假设一个有效的单电子算符$f(i)$，被称为Fock算符，其形式为：
+\begin{equation}
+f(i)=-\frac12\Delta_i^2-\sum_{A-1}^M\frac{Z_A}{r_{iA}}+v^{HF}(i)
+\end{equation}
+$v^{HF}(i)$是$i$电子和其他电子的相互作用产生的平均势。所谓“自洽场”中的场，可以简单理解为这个平均势。Hartree-Fock近似的精髓在于将复杂的多电子问题转化为单电子问题，单电子问题使用平均的方式处理复杂的电子排斥。\\
+Fock算符是轨道的本征函数：
+\begin{equation}
+f|\chi_a\rangle=\epsilon_a|\chi_a\rangle
+\end{equation}
+$\chi_a$是自旋轨道波函数，后文会经常用到。
+\subsubsection{自旋轨道下的Hartree-Fock能量方程}
+基态波函数的Slater行列式形式为：
+\begin{equation}
+\Psi_0=\frac1{2^{1/2}}
+\begin{vmatrix}
+\chi_1(x_1) & \chi_2(x_1)\\
+\chi_1(x_2) & \chi_2(x_2)
+\end{vmatrix}
+=|\chi_1\chi_2\rangle
+\end{equation}
+
+以极小基$H_2$模型考虑。在Born-Oppenheimer近似下，双电子体系的哈密顿量为：
+\begin{equation}
+\begin{aligned}
+	\mathbf{H}&= \left(-\frac12\Delta_1^2-\sum_A\frac{Z_A}{r_{1A}}\right)+\left(-\frac12\Delta_2^2-\sum_A\frac{Z_A}{r_{2A}}\right)+\frac{1}{r_{12}}\\
+			  &=h(1)+h(2)+\frac{1}{r_{12}}
+\end{aligned}
+\end{equation}
+其中$h(1)$就是电子1的“核哈密顿量”，表示电子在核的势场中的动能和势能，对应后文的“单电子积分”，$\frac{1}{r_{12}}$对应双电子部分。为方便，我们将总哈密顿分成单电子和双电子部分:
+\begin{equation}
+\begin{aligned}
+	\mathbf{O}_1&=h(1)+h(2)\\
+	\mathbf{O}_2&=r_{12}^{-1}
+\end{aligned}
+\end{equation}
+矩阵元$\langle\Psi_0|\mathbf{H}|\Psi_0\rangle=\langle\Psi_0|\mathbf{O_1}|\Psi_0\rangle+\langle\Psi_0|\mathbf{O_2}|\Psi_0\rangle$
+\begin{equation}
+\begin{aligned}
+\langle\Psi_0|h(1)|\Psi_0\rangle&=\int dx_1dx_2[2^{\frac{-1}{2}}(\chi_1(x_1)\chi_2(x_2)-\chi_2(x_1)\chi_1(x_2))]^*\\
+								&\times h(r_1)[2^{\frac{-1}{2}}(\chi_1(x_1)\chi_2(x_2)-\chi_2(x_1)\chi_1(x_2))]
+\end{aligned}
+\end{equation}
+\begin{equation}
+\begin{aligned}
+=\frac12\int dx_1dx_2&[\chi_1^*(x_1)\chi_2^*(x_2)h(r_1)\chi_1(x_1)\chi_2(x_2)-\chi_1^*(x_1)\chi_2^*(x_2)h(r_1)\chi_2(x_1)\chi_1(x_2)\\
+&-\chi_2^*(x_1)\chi_1^*(x_2)h(r_1)\chi_1(x_1)\chi_2(x_2)+\chi_2^*(x_1)\chi_1^*(x_2)h(r_1)\chi_2(x_1)\chi_1(x_2)
+\end{aligned}
+\end{equation}
+根据自旋轨道的正交归一性，将$x_2$积掉，公式(6)只有两项：
+\begin{equation}
+\begin{aligned}
+\langle\Psi_0|h(1)|\Psi_0\rangle&=\frac12\int dx_1\chi_1^*(x_1)h(r_1)\chi_1(x_1)+\frac12\int dx_1\chi_2^*(x_1)h(r_1)\chi_2(x_1)
+\end{aligned}
+\end{equation}
+对于重复操作，可得：$\langle\Psi_0|h(1)|\Psi_0\rangle=\langle\Psi_0|h(2)|\Psi_0\rangle$
+则：
+\begin{equation}
+\begin{aligned}
+\langle\Psi_0|\mathbf{O_1}|\Psi_0\rangle=\int dx_1\chi_1^*(x_1)h(r_1)\chi_1(x_1)+\int dx_1\chi_2^*(x_1)h(r_1)\chi_2(x_1)
+\end{aligned}
+\end{equation}
+上式被称为\textbf{单电子积分}，使用$\langle i|h|j\rangle=\langle\chi_i|h|\chi_j\rangle=\int dx_1\chi_1^*(x_1)h(r_1)\chi_1(x_1)$简化表示，则有：
+\begin{equation}
+\begin{aligned}
+\langle\Psi_0|\mathbf{O_1}|\Psi_0\rangle=\langle1|h|1\rangle+\langle 2|h|2\rangle
+\end{aligned}
+\end{equation}
+现在计算$O_2$矩阵元：
+\begin{equation}
+\begin{aligned}
+\langle\Psi_0|\mathbf{O_2}|\Psi_0\rangle&=\int dx_1dx_2[2^{\frac{-1}{2}}(\chi_1(x_1)\chi_2(x_2)-\chi_2(x_1)\chi_1(x_2))]^*\\
+								&\times r_{12}^{-1}[2^{\frac{-1}{2}}(\chi_1(x_1)\chi_2(x_2)-\chi_2(x_1)\chi_1(x_2))]
+\end{aligned}
+\end{equation}
+\begin{equation}
+\begin{aligned}
+=\frac12\int dx_1dx_2&[\chi_1^*(x_1)\chi_2^*(x_2)r_{12}^{-1}\chi_1(x_1)\chi_2(x_2)-\chi_1^*(x_1)\chi_2^*(x_2)r_{12}^{-1}\chi_2(x_1)\chi_1(x_2)\\
+&-\chi_2^*(x_1)\chi_1^*(x_2)r_{12}^{-1}\chi_1(x_1)\chi_2(x_2)+\chi_2^*(x_1)\chi_1^*(x_2)r_{12}^{-1}\chi_2(x_1)\chi_1(x_2)
+\end{aligned}
+\end{equation}
+显然$r_{12}^{-1}=r_{21}^{-1}$，上式中的积分变量可以交换，即第一项和第四项相同，第二项与第三项相同，因此：
+\begin{equation}
+\begin{aligned}
+\langle\Psi_0|\mathbf{O_2}|\Psi_0\rangle&=\int dx_1dx_2\chi_1^*(x_1)\chi_2^*(x_2)r_{12}^{-1}\chi_1(x_1)\chi_2(x_2)\\
+&-\int dx_1dx_2\chi_1^*(x_1)\chi_2^*(x_2)r_{12}^{-1}\chi_2(x_1)\chi_1(x_2)
+\end{aligned}
+\end{equation}
+与单电子积分类似，我们同样以$$\langle ij|kl\rangle=\langle\chi_i\chi_j|\chi_k\chi_l\rangle=\int dx_1dx_2\chi_i^*(x_1)\chi_j^*(x_2)r_{12}^{-1}\chi_k(x_1)\chi_l(x_2)$$简化表示。那么就有:
+\begin{equation}
+\langle\Psi_0|\mathbf{O_2}|\Psi_0\rangle=\langle 12|12\rangle-\langle 12|21\rangle
+\end{equation}
+所以，Hartree-Fock基态能量为：
+\begin{equation}
+\begin{aligned}
+E_0=\langle\Psi_0|\mathbf{H}|\Psi_0\rangle&=\langle\Psi_0|\mathbf{O_1}+\mathbf{O_2}|\Psi_0\rangle\\
+  										  &=\langle 1|h|1\rangle+\langle 2|h|2\rangle+\langle 12|12\rangle-\langle 12|21\rangle
+\end{aligned}
+\end{equation}
+有时也常用\textbf{反对称双电子积分}$\langle ij||kl\rangle ij|kl\rangle-\langle ij|lk\rangle$
+上述使用的积分符号也被称为\textbf{物理学家符号}，为方便，本文所有公式推导均是在物理学家符号下。
+双电子积分具有以下对称性：
+\begin{equation}
+\begin{aligned}
+\langle ij|kl\rangle&=\langle ji|lk\rangle\\
+\langle ij|kl \rangle&=\langle kl|ij\rangle^*
+\end{aligned}
+\end{equation}
+对于孤立体系、不考虑相对论效应的情况下，双电子积分的矩阵元均为实数，所以双电子积分具有\textbf{八重对称性}。\\
+还有一种符号计法，被称为\textbf{化学家符号}，自旋轨道中使用$[]$表示，和物理学家符号的关系是：
+\begin{equation}
+\begin{aligned}
+\langle ij|kl\rangle = \langle \chi_i\chi_j|\chi_k\chi_l\rangle = [ik|jl]
+\end{aligned}
+\end{equation}
+对于空间轨道，化学家符号使用$()$表示。事实上，常用的量子化学电子积分库Libint2，Libcint都是在化学家符号下计算的。
+
+\subsubsection{空间轨道下的Hartree-Fock能量方程}
+使用自旋轨道可以简化公式推导，但实际计算中自旋函数$\alpha,\beta$必须呗积分掉才能将其约化为可数值计算的空间轨道和积分。（实际上，对于闭壳层，自旋轨道比自旋轨道多浪费一个维度的资源）。\par
+自旋轨道下Hartree-Fock基态能量为：
+\begin{equation}
+\begin{aligned}
+E_0=\langle \chi_1|h|\chi_1\rangle+\langle \chi_2|h|\chi_2\rangle+\langle \chi_1\chi_2|\chi_1\chi_2\rangle-\langle \chi_1\chi_2|\chi_2\chi_1\rangle
+\end{aligned}
+\end{equation}
+我们知道，空间轨道和自旋轨道的关系为：
+\begin{equation}
+\begin{aligned}
+\chi_1(x)&=\psi_1(r)\alpha(w)=\psi_1 \\
+\chi_2(x)&=\psi_1(r)\beta(w)=\overline{\psi_1}
+\end{aligned}
+\end{equation}
+联立上述方程，可以得到空间轨道下的Hartree-Fock能量：
+\begin{equation}
+\begin{aligned}
+E_0=\langle \psi_1|h|\psi_1\rangle+\langle \overline{\psi_1}|h|\overline{\psi_1}\rangle+\langle \psi_1\overline{\psi_1}|\psi_1\overline{\psi_1}\rangle-\langle \psi_1\overline{\psi_1}|\overline{\psi_1}\psi_1\rangle
+\end{aligned}
+\end{equation}
+对于单电子积分：
+\begin{equation}
+\begin{aligned}
+\langle \overline{\psi_1}|h|\overline{\psi_1}\rangle=\int dr\psi_1^*(r_1)\beta^*h(r_1)\psi_1(r_1)\beta
+\end{aligned}
+\end{equation}
+对于非相对论下，单电子算符是不依赖自旋的，根据正交归一性，$\langle \beta|\beta\rangle=1$，所以显然：
+\begin{equation}
+\begin{aligned}
+\langle \overline{\psi_1}|h|\overline{\psi_1}\rangle=\langle \psi_1|h|\psi_1\rangle
+\end{aligned}
+\end{equation}
+对于双电子积分的第一项：
+\begin{equation}
+\begin{aligned}
+\langle \psi_1\overline{\psi_1}|\psi_1\overline{\psi_1}\rangle=&\int dr_1dr_2dw_1dw_2\psi_1^*(r_1)\alpha^*(w_1)\psi_1(r_2)\alpha(w_2) r_{12}^{-1}\\
+&\times\psi_1^*(r_1)\beta^*(w_1)\psi_1(r_2)\beta(w_2)
+\end{aligned}
+\end{equation}
+同样把$\alpha,\beta$积掉，得到：
+\begin{equation}
+\begin{aligned}
+\langle \psi_1\overline{\psi_1}|\psi_1\overline{\psi_1}\rangle&=\int dr_1dr_2\psi_1^*(r_1)\psi_1(r_2) r_{12}^{-1}\psi_1^*(r_1)\psi_1(r_2)\\
+&=\langle \psi_1\psi_1|\psi_1\psi_1\rangle
+\end{aligned}
+\end{equation}
+对于双电子积分的第二项：
+\begin{equation}
+\begin{aligned}
+\langle \psi_1\overline{\psi_1}|\overline{\psi_1}\psi_1\rangle=&\int dr_1dr_2\psi_1^*(r_1)\alpha^*(w_1)\psi_1^*(r_2)\beta^*(w_2) r_{12}^{-1}\\
+&\times\psi_1(r_1)\beta(w_1)\psi_1(r_2)\alpha(w_2)=0
+\end{aligned}
+\end{equation}
+这是因为正交性$\langle \alpha|\beta\rangle=\langle \beta|\alpha\rangle=0$\\
+所以，空间轨道下的极小基H2的Hartree-Fock基态能量为：
+\begin{equation}
+\begin{aligned}
+E_0&=2\langle\psi_1|h|\psi_1\rangle+\langle\psi_1\psi_1|\psi_1\psi_1\rangle\\
+   &=2\langle1|h|1\rangle+\langle 11|11\rangle
+\end{aligned}
+\end{equation}
+通常下，空间轨道的公式会比自旋轨道下的更紧凑，更好编程。
+\subsubsection{N电子体系闭壳层限制性Hartree-Fock能量方程}
+类似H2极小基的莫函数，N电子系统的Hartree-Fock波函数为：
+\begin{equation}
+\begin{aligned}
+|\Psi_0\rangle&=|\chi_1\chi_2\chi_3\chi_4\dots\chi_{N-1}\chi_N\rangle\\
+			&=|\psi_1\overline{\psi_1}\psi_2\overline{\psi_2}\dots\psi_{N/2}\overline{\psi_{N/2}}\rangle
+\end{aligned}
+\end{equation}
+对于自旋轨道，Hartree-Fock能量方程为：
+\begin{equation}
+\begin{aligned}
+E_0=\sum_i^N\langle i|h|i\rangle+\frac12\sum_i^N\sum_j^N\langle ij|ij\rangle-\langle ij|ji\rangle
+\end{aligned}
+\end{equation}
+其中的双电子部分，共N/2对电子，故有$\frac12$\par
+自旋轨道波函数包括N/2个$\alpha$自旋轨道和N/2个$\beta$自旋轨道，我们将自旋轨道的求和分为两部分：
+\begin{equation}
+\begin{aligned}
+\sum_i^N\chi_i=\sum_i^{N/2}\psi_i+\sum_i^{N/2}\overline{\psi_i}
+\end{aligned}
+\end{equation}
+对于双求和：
+\begin{equation}
+\begin{aligned}
+\sum_i^N\sum_j^N\chi_i\chi_j&=\sum_i^N\chi_i\sum_j^N\chi_j\\
+&=\sum_i^{N/2}(\psi_i+\overline{\psi_i})\sum_j^{N/2}(\psi_j+\overline{\psi_j})\\
+&=\sum_i^{N/2}\sum_j^{N/2}\psi_i\psi_j+\psi_i\overline{\psi_j}+\overline{\psi_i}\psi_j+\overline{\psi_i}\overline{\psi_j}
+\end{aligned}
+\end{equation}
+我们将其转化为空间轨道方程。对于单电子积分：
+\begin{equation}
+\begin{aligned}
+\sum_i^N\langle i|h|i\rangle=\sum_i^{N/2}\langle i|h|i\rangle+\sum_i^{N/2}\langle \overline{i}|h|\overline{i}\rangle=2\sum_i^{N/2}\langle\psi_i|h|\psi_i\rangle
+\end{aligned}
+\end{equation}
+双电子积分项：
+\begin{equation}
+\begin{aligned}
+\frac12\sum_i^N&\sum_j^N\langle ij|ij\rangle-\langle ij|ji\rangle\\
+&=\frac12\sum_i^{N/2}\sum_j^{N/2}\langle ij|ij\rangle-\langle ij|ji\rangle+\frac12\sum_i^{N/2}\sum_j^{N/2}\langle i\overline{j}|i\overline{j}\rangle-\langle i\overline{j}|\overline{j}i\rangle\\
+&+\frac12\sum_i^{N/2}\sum_j^{N/2}\langle \overline{i}j|\overline{i}j\rangle-\langle \overline{i}j|j\overline{i}\rangle+\frac12\sum_i^{N/2}\sum_j^{N/2}\langle \overline{i}\overline{j}|\overline{i}\overline{j}\rangle-\langle \overline{i}\overline{j}|\overline{j}\overline{i}\rangle\\
+&=\sum_i^{N/2}\sum_j^{N/2}2\langle\psi_i\psi_j|\psi_i\psi_j\rangle-\langle\psi_i\psi_j|\psi_j\psi_i\rangle
+\end{aligned}
+\end{equation}
+因此，空间轨道下的闭壳层限制性Hartree-Fock能量方程是：
+\begin{equation}
+\begin{aligned}
+E_0=2\sum_i^{N/2}\langle\psi_i|h|\psi_i\rangle+\sum_i^{N/2}\sum_j^{N/2}2\langle\psi_i\psi_j|\psi_i\psi_j\rangle-\langle\psi_i\psi_j|\psi_j\psi_i\rangle
+\end{aligned}
+\end{equation}
+
+\subsubsection{电子积分}
+  这里只介绍HF方法中使用到的电子积分，并不展开其计算的解析式。
 \begin{itemize}
   \item 单电子积分
   \begin{itemize}
     \item 重叠积分S：$S_{pq}=\langle\psi_p|\psi_q\rangle$
     \item 动能积分T：$T_{pq}=\langle\psi_p|-\frac{1}{2}\nabla^2|\psi_q\rangle$
     \item 核-电子势能积分V：$V_{pq}=\langle\psi_p|\frac{1}{r_C}|\psi_q\rangle$
-	\item 核-哈密顿矩阵H：H=
+	\item 核-哈密顿矩阵$H^{core}$：$H^{core}=T_{pq}+V_{pq}$
   \end{itemize}
-  \item 双电子积分I：$I_{pqrs} = \int \int d\mathbf{r_1} d\mathbf{r_2} \phi_p^*(\mathbf{r_1}) \phi_q(\mathbf{r_1}) \phi_r^*(\mathbf{r_2}) \phi_s(\mathbf{r_2})$
+  \item 双电子积分
+\begin{itemize}
+\item I：$I_{pqrs} = \int d\mathbf{r_1} d\mathbf{r_2} \phi_p^*(\mathbf{r_1}) \phi_q(\mathbf{r_1}) \phi_r^*(\mathbf{r_2}) \phi_s(\mathbf{r_2})$
+  \item 库伦积分J：$J_{ij}=\langle\psi_i\psi_j|\psi_i\psi_j\rangle$
+  \item 交换积分K：$K_{ij}=\langle\psi_i\psi_j|\psi_j\psi_i\rangle$
+\end{itemize}
 \end{itemize}
 对于水分子在STO-3G下，共有10个电子、7个分子轨道，所以单电子积分为7*7的对称阵，双电子积分为7*7*7*7的四维矩阵，显然，双电子积分是自洽场计算中最耗时的部分，此处留个疑问：\textbf{存储四维矩阵显然浪费，且处理四维矩阵更耗时，计算程序采用那些策略优化呢？}
 \subsection{Roothan方程}
-  HF方法，又称为自洽场方法，目标为解一个伪特征值矩阵方程（pseudo-eigenvalue matrix equation）：
-$$\mathbf{FC}=\mathbf{SC}\epsilon$$
-通过迭代的方法求解稀疏矩阵\textbf{C}得到能量本征值$\epsilon_{i}$，其中\textbf{S}为重叠积分，\textbf{F}为Fock矩阵，其通过电子积分得到：
-$$F_{pq}=\mathbf{H}+2(pq|rs)D_{rs}-(pr|qs)D_{rs}$$
-其中$2(pq|rs)D_{rs}$被称为库伦积分（\textbf{J}）,$-(pq|rs)D_{rs}$被称为交换积分（\textbf{K}），矩阵\textbf{D}为密度矩阵（density matrix）：
-$$D_{pq}=\sum_{i}C_{pi}C_{qi}$$
-Hartree-Fock能量为：
-$$E_{elec}=\left(F_{pq}+H_{pq}\right)D_{pq}$$
+Roothan方程一般是指限制性闭壳层HF方程，也称为Hartree-Fock-Roothan方程。以他为标题是因为下文的代码实现部分是如此。我们先推导一般性的HF方程。假设读者已经了解线性变分法（应该是结构化学的的知识）。\par
+首先，给定一个线性变分尝试波函数：
+\begin{equation}
+\begin{aligned}
+|\Phi\rangle=\sum_{i=0}^Nc_i|\Psi_i\rangle
+\end{aligned}
+\end{equation}
+其需要能量极小化的表达式为：
+\begin{equation}
+\begin{aligned}
+E=\langle\Phi|\mathbf{H}|\Phi\rangle=\sum_{ij}c_i^*c_j\langle\Psi_i|\mathbf{H}|\Psi_j\rangle
+\end{aligned}
+\end{equation}
+注意，尝试波函数需要满足归一化：
+\begin{equation}
+\begin{aligned}
+\langle\Phi\Phi\rangle-1=\sum_{ij}c_i^*c_j\langle\Phi\Phi\rangle-1=0
+\end{aligned}
+\end{equation}
+使用Lagrange不定乘子发，定义方程$L$和Lagrange乘子$\epsilon$：
+\begin{equation}
+\begin{aligned}
+L&=\langle\Phi|\mathbf{H}|\Phi\rangle-\epsilon(\langle\Phi\Phi\rangle-1)\\
+ &=\sum_{ij}c_i^*c_j\langle\Psi_i|\mathbf{H}|\Psi_j\rangle-\epsilon\left(\sum_{ij}c_i^*c_j\langle\Phi|\Phi\rangle-1\right)
+\end{aligned}
+\end{equation}
+进行线性变分：
+\begin{equation}
+\begin{aligned}
+\delta L&=\sum_{ij}\delta c_i^*c_j\langle\Psi_i|\mathbf{H}|\Psi_j\rangle-\epsilon\sum_{ij}\delta c_i^*c_j\langle\Phi|\Phi\rangle\\&+\sum_{ij}c_i^*\delta c_j\langle\Psi_i|\mathbf{H}|\Psi_j\rangle-\epsilon\sum_{ij}c_i^*\delta c_j\langle\Phi|\Phi\rangle\\
+&=2\sum_i\delta c_i^*\left(\sum_j\langle\Psi_i|\mathbf{H}|\Psi_j\rangle c_j-\epsilon \langle\Psi_i|\Psi_j\rangle c_j\right)=0
+\end{aligned}
+\end{equation}
+我简单将复共轭合并，注意，索引i,j是等价的。\\
+我们使用上文定义的$H_{ij}=\langle\Psi_i|\mathbf{H}|\Psi_j\rangle$和重叠积分$S_{ij}=\langle\Psi_i|\Psi_j\rangle$，HF方程可以写为：
+\begin{equation}
+\begin{aligned}
+\sum_jH_{ij}c_j=\epsilon\sum_jS_{ij}c_j
+\end{aligned}
+\end{equation}
+当然，一般写为：
+\begin{equation}
+\begin{aligned}
+\mathbf{Hc}=\epsilon\mathbf{Sc}
+\end{aligned}
+\end{equation}
+聪明的你显然注意到了，虽然我前文没有着墨声明：算符=矩阵，积分=张量，大家在符号中也能体会到了。\\
+下面引入基函数，假设有K个已知的基函数（显然是我们上文提到的Gaussian形基函数），那么位置的分子轨道可以表示为基函数的线性展开：
+\begin{equation}
+\begin{aligned}
+\psi_i=\sum_{\mu}^KC_{\mu i}\phi_{\mu}
+\end{aligned}
+\end{equation}
+带入Fock算符，HF方程可写为
+\begin{equation}
+\begin{aligned}
+f\sum_vC_{vi}\phi_v=\epsilon_i\sum_vC_{vi}\phi_v
+\end{aligned}
+\end{equation}
+左乘波函数的复共轭得到：
+\begin{equation}
+\begin{aligned}
+\sum_vC_{vi}\langle\phi_v^*|f|\phi_v\rangle=\epsilon_i\sum_vC_{vi}\langle\phi_v^*|\phi_v\rangle
+\end{aligned}
+\end{equation}
+我们定义Fock矩阵$F_{\mu v}=\langle\phi_v^*|f|\phi_v\rangle$，还有上文提到的重叠积分。那么，Roothan方程可以表示为：
+\begin{equation}
+\begin{aligned}
+\sum_vF_{\mu v}C_{vi}=\epsilon_i\sum_vS_{\mu v}C_{vi}
+\end{aligned}
+\end{equation}
+或者写成矩阵形式：
+\begin{equation}
+\begin{aligned}
+\mathbf{FC}=\mathbf{SC}\epsilon
+\end{aligned}
+\end{equation}
+那么聪明的你，猜猜这些矩阵的形状是什么呢？\par
+我们定义总电荷密度：
+\begin{equation}
+\begin{aligned}
+\rho(r)=2\sum_a^{N/2}|\psi_a(r)|^2
+\end{aligned}
+\end{equation}
+将波函数的线性展开带入其中得到：
+\begin{equation}
+\begin{aligned}
+\rho(r)&=2\sum_a^{N/2}\psi_a^*(r)\psi_a(r)\\
+&=2\sum_a^{N/2}\sum_vC_{va}^*\phi_v^*(r)\sum_{\mu}C_{\mu a}\phi_{\mu}(r)\\
+&=\sum_{\mu v}\left(2\sum_a^{N/2}C_{va}^*C_{\mu a}\right)\phi_v^*(r)\phi_{\mu}(r)\\
+&=\sum_{\mu v}P_{\mu v}\phi_v^*(r)\phi_{\mu}(r)
+\end{aligned}
+\end{equation}
+我们得到了一个重要的概念：密度矩阵$P_{\mu v}=2\sum_a^{N/2}C_{va}^*C_{\mu a}$
+可以证明Fock算符是波函数的本正算符，结合上节的推导可得到其表达式：
+\begin{equation}
+\begin{aligned}
+f=h+\sum_{a}^{N/2}2J_{a}-K_{a}
+\end{aligned}
+\end{equation}
+将波函数的线性展开带入Fock算符得到，并且写为矩阵形式（主要是好写）：
+\begin{equation}
+\begin{aligned}
+F_{\mu v}&=H_{\mu v}^{core}+\sum_a^{N/2}\sum_{ij}C_{ia}C_{ja}^*[2\langle ij|ij\rangle-\langle ij|ji\rangle]\\
+&=H_{\mu v}^{core}+\sum_{ij}P_{ij}[\langle ij|ij\rangle-\frac12\langle ij|ji\rangle]\\
+\end{aligned}
+\end{equation}
+我们发现，Fock矩阵只与密度矩阵有关，也就是Fock矩阵依赖于展开系数。展开系数又可以通过求解Roothan方程得到，如此迭代直到能量最低，这就是所谓“自洽（self-consistent）”。
 
 \newpage
 
@@ -258,7 +598,7 @@ assert(np.abs(SCF_E + 84.1513215474753) < 1.0e-10)
 
 \begin{appendices}
     \renewcommand{\thesection}{\Alph{section}}
-    \section{完整代码}
+    \section{完整代码（简易版）}
 \begin{lstlisting}[style = Python]
 import numpy as np
 import scipy
@@ -337,6 +677,226 @@ for scf_iter in range(1, max_iter + 1):
     dm = get_dm(F, 5)
 
 assert(np.abs(SCF_E + 84.1513215474753) < 1.0e-10)
+\end{lstlisting}
+\newpage
+\section{完整代码（Libcint版）}
+\begin{lstlisting}[style = Python]
+import numpy as np
+import scipy
+import ctypes
+from pyscf import gto
+import time
+
+# slots of atm
+CHARGE_OF       = 0
+PTR_COORD       = 1
+NUC_MOD_OF      = 2
+PTR_ZETA        = 3
+PTR_FRAC_CHARGE = 3
+RESERVE_ATMLOT1 = 4
+RESERVE_ATMLOT2 = 5
+ATM_SLOTS       = 6
+
+
+# slots of bas
+ATOM_OF         = 0
+ANG_OF          = 1
+NPRIM_OF        = 2
+NCTR_OF         = 3
+KAPPA_OF        = 4
+PTR_EXP         = 5
+PTR_COEFF       = 6
+RESERVE_BASLOT  = 7
+BAS_SLOTS       = 8
+
+# Create a molecular object for H2O molecule
+mol = gto.M(atom='O 0 0 0; H 0 -0.757 0.587; H 0 0.757 0.587', basis='6-31g')
+
+# necessary parameters for Libcint
+atm = mol._atm.astype(np.intc)
+bas = mol._bas.astype(np.intc)
+env = mol._env.astype(np.double)
+nao = mol.nao_nr().astype(np.intc)
+nshls = len(bas)
+natm = len(atm)
+
+_cint = ctypes.cdll.LoadLibrary('/home/yx/cint_and_xc/lib/libcint.so')
+
+def get_ovlp_matrix():
+    
+    ovlp_matrix = np.zeros((nao, nao), order='F')
+    
+    _cint.cint1e_ovlp_sph.argtypes = [
+    np.ctypeslib.ndpointer(dtype=np.double, ndim=2),
+    (ctypes.c_int * 2),
+    np.ctypeslib.ndpointer(dtype=np.intc, ndim=2),
+    ctypes.c_int,
+    np.ctypeslib.ndpointer(dtype=np.intc, ndim=2),
+    ctypes.c_int,
+    np.ctypeslib.ndpointer(dtype=np.double, ndim=1)
+]
+    
+
+    _cint.CINTcgto_spheric.restype = ctypes.c_int
+    _cint.CINTcgto_spheric.argtypes = [ctypes.c_int, np.ctypeslib.ndpointer(dtype=np.intc, ndim=2)]
+    
+    for ipr in range(nshls):
+        di = _cint.CINTcgto_spheric(ipr, bas)
+        x = 0
+        for i in range(ipr):
+            x += _cint.CINTcgto_spheric(i, bas)
+
+        for jpr in range(nshls):
+            dj = _cint.CINTcgto_spheric(jpr, bas)
+            y = 0
+            for j in range(jpr):
+                y += _cint.CINTcgto_spheric(j, bas)
+
+            buf = np.empty((di, dj), order='F')
+            _cint.cint1e_ovlp_sph(buf, (ctypes.c_int * 2)(ipr, jpr), atm, natm, bas, nshls, env)
+
+            # Update the overlap matrix with the values from buf
+            ovlp_matrix[x: x + di, y : y + dj] = buf
+
+    return ovlp_matrix
+def get_core_hamiltonian():
+    
+    core_h = np.zeros((nao, nao), order='F')
+    
+    _cint.cint1e_nuc_sph.argtypes = [
+    np.ctypeslib.ndpointer(dtype=np.double, ndim=2),
+    (ctypes.c_int * 2),
+    np.ctypeslib.ndpointer(dtype=np.intc, ndim=2),
+    ctypes.c_int,
+    np.ctypeslib.ndpointer(dtype=np.intc, ndim=2),
+    ctypes.c_int,
+    np.ctypeslib.ndpointer(dtype=np.double, ndim=1)
+]
+    _cint.cint1e_kin_sph.argtypes = [
+    np.ctypeslib.ndpointer(dtype=np.double, ndim=2),
+    (ctypes.c_int * 2),
+    np.ctypeslib.ndpointer(dtype=np.intc, ndim=2),
+    ctypes.c_int,
+    np.ctypeslib.ndpointer(dtype=np.intc, ndim=2),
+    ctypes.c_int,
+    np.ctypeslib.ndpointer(dtype=np.double, ndim=1)
+]
+    
+
+    _cint.CINTcgto_spheric.restype = ctypes.c_int
+    _cint.CINTcgto_spheric.argtypes = [ctypes.c_int, np.ctypeslib.ndpointer(dtype=np.intc, ndim=2)]
+    
+    for ipr in range(nshls):
+        di = _cint.CINTcgto_spheric(ipr, bas)
+        x = 0
+        for i in range(ipr):
+            x += _cint.CINTcgto_spheric(i, bas)
+
+        for jpr in range(nshls):
+            dj = _cint.CINTcgto_spheric(jpr, bas)
+            y = 0
+            for j in range(jpr):
+                y += _cint.CINTcgto_spheric(j, bas)
+
+            buf1 = np.empty((di, dj), order='F')
+            buf2 = np.empty((di, dj), order='F')
+            
+            _cint.cint1e_nuc_sph(buf1, (ctypes.c_int * 2)(ipr, jpr), atm, natm, bas, nshls, env)
+            _cint.cint1e_kin_sph(buf2, (ctypes.c_int * 2)(ipr, jpr), atm, natm, bas, nshls, env)
+
+            # Update the overlap matrix with the values from buf
+            core_h[x: x + di, y : y + dj] += buf1
+            core_h[x: x + di, y : y + dj] += buf2
+
+    return core_h
+def get_int2e():
+    int2e = np.zeros((nao, nao, nao, nao), order='F')
+    
+    _cint.cint2e_sph.argtypes = [
+    np.ctypeslib.ndpointer(dtype=np.double, ndim=4),
+    (ctypes.c_int * 4),
+    np.ctypeslib.ndpointer(dtype=np.intc, ndim=2),
+    ctypes.c_int,
+    np.ctypeslib.ndpointer(dtype=np.intc, ndim=2),
+    ctypes.c_int,
+    np.ctypeslib.ndpointer(dtype=np.double, ndim=1),
+    ctypes.POINTER(ctypes.c_void_p)
+]
+    _cint.CINTcgto_spheric.restype = ctypes.c_int
+    _cint.CINTcgto_spheric.argtypes = [ctypes.c_int, np.ctypeslib.ndpointer(dtype=np.intc, ndim=2)]
+    
+    for ipr in range(nshls):
+        di = _cint.CINTcgto_spheric(ipr, bas)
+        x = 0
+        for i in range(ipr):
+            x += _cint.CINTcgto_spheric(i, bas)
+
+        for jpr in range(nshls):
+            dj = _cint.CINTcgto_spheric(jpr, bas)
+            y = 0
+            for j in range(jpr):
+                y += _cint.CINTcgto_spheric(j, bas)
+
+            for kpr in range(nshls):
+                dk = _cint.CINTcgto_spheric(kpr, bas)
+                z = 0
+                for k in range(kpr):
+                    z += _cint.CINTcgto_spheric(k, bas)
+
+                for lpr in range(nshls):
+                    dl = _cint.CINTcgto_spheric(lpr, bas)
+                    w = 0
+                    for l in range(lpr):
+                        w += _cint.CINTcgto_spheric(l, bas)
+
+                    buf = np.empty((di, dj, dk, dl), order='F')
+                    _cint.cint2e_sph(buf, (ctypes.c_int * 4)(ipr, jpr, kpr, lpr), atm, natm, bas, nshls, env, ctypes.POINTER(ctypes.c_void_p)())
+
+                    # Update the overlap matrix with the values from buf
+                    int2e[x: x + di, y : y + dj, z : z + dk, w : w + dl] = buf
+        int2e.reshape([nao, nao, nao, nao])
+        
+    return int2e
+def make_j(D):
+    return np.einsum('pqrs,rs->pq', I, D, optimize=True) 
+def make_k(D):
+    return np.einsum('prqs,rs->pq', I, D, optimize=True)  
+def make_d(fock, norb):
+    eigs, coeffs = scipy.linalg.eigh(fock, S)
+    c_occ = coeffs[:, :norb]
+    return np.einsum('pi,qi->pq', c_occ, c_occ, optimize=True)
+
+if __name__ == '__main__':
+    start = time.time()
+    S = get_ovlp_matrix()   
+    H = get_core_hamiltonian()
+    I = get_int2e()
+    # SCF & Previous Energy
+    SCF_E = 0.0
+    E_old = 0.0
+    # start DM
+    D = make_d(H, 5)
+    # ==> RHF-SCF Iterations <==
+    for scf_iter in range(1, 100 + 1):
+
+        # GET Fock martix
+        F = H + 2 * make_j(D) - make_k(D)
+        '''error vector = FDS - SDF '''
+        diis_r = F.dot(D).dot(S) - S.dot(D).dot(F)
+        SCF_E = np.einsum('pq,pq->', (H + F), D, optimize=True)
+        dE = SCF_E - E_old
+        dRMS = 0.5 * np.mean(diis_r ** 2) ** 0.5
+        print('SCF Iteration %3d: Energy = %4.16f dE = % 1.5E dRMS = %1.5E' % (scf_iter, SCF_E, dE, dRMS))
+
+        if (abs(dE) < 1e-10) and (dRMS < 1e-10):
+            end = time.time()
+            print("SCF convergence! Congrats")
+            print("Time used: ", end - start)
+            break
+        E_old = SCF_E
+        D = make_d(F, 5)
+        
+  
 \end{lstlisting}
 \end{appendices}
 
