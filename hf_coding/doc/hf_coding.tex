@@ -89,10 +89,10 @@ E_0=\langle\Psi_0|\mathbf{H}|\Psi_0\rangle
 \end{equation}
 在单电子近似下，我们假设一个有效的单电子算符$f(i)$，被称为Fock算符，其形式为：
 \begin{equation}
-f(i)=-\frac12\Delta_i^2-\sum_{A-1}^M\frac{Z_A}{r_{iA}}+v^{HF}(i)
+f(i)=-\frac12\nabla_i^2-\sum_{A=1}^M\frac{Z_A}{r_{iA}}+v^{HF}(i)
 \end{equation}
 $v^{HF}(i)$是$i$电子和其他电子的相互作用产生的平均势。所谓“自洽场”中的场，可以简单理解为这个平均势。Hartree-Fock近似的精髓在于将复杂的多电子问题转化为单电子问题，单电子问题使用平均的方式处理复杂的电子排斥。\\
-Fock算符是轨道的本征函数：
+Fock算符是轨道的本征算符：
 \begin{equation}
 f|\chi_a\rangle=\epsilon_a|\chi_a\rangle
 \end{equation}
@@ -111,7 +111,7 @@ $\chi_a$是自旋轨道波函数，后文会经常用到。
 以极小基$H_2$模型考虑。在Born-Oppenheimer近似下，双电子体系的哈密顿量为：
 \begin{equation}
 \begin{aligned}
-	\mathbf{H}&= \left(-\frac12\Delta_1^2-\sum_A\frac{Z_A}{r_{1A}}\right)+\left(-\frac12\Delta_2^2-\sum_A\frac{Z_A}{r_{2A}}\right)+\frac{1}{r_{12}}\\
+	\mathbf{H}&= \left(-\frac12\nabla_1^2-\sum_A\frac{Z_A}{r_{1A}}\right)+\left(-\frac12\Delta_2^2-\sum_A\frac{Z_A}{r_{2A}}\right)+\frac{1}{r_{12}}\\
 			  &=h(1)+h(2)+\frac{1}{r_{12}}
 \end{aligned}
 \end{equation}
@@ -204,7 +204,7 @@ E_0=\langle\Psi_0|\mathbf{H}|\Psi_0\rangle&=\langle\Psi_0|\mathbf{O_1}+\mathbf{O
 对于空间轨道，化学家符号使用$()$表示。事实上，常用的量子化学电子积分库Libint2，Libcint都是在化学家符号下计算的。
 
 \subsubsection{空间轨道下的Hartree-Fock能量方程}
-使用自旋轨道可以简化公式推导，但实际计算中自旋函数$\alpha,\beta$必须呗积分掉才能将其约化为可数值计算的空间轨道和积分。（实际上，对于闭壳层，自旋轨道比自旋轨道多浪费一个维度的资源）。\par
+使用自旋轨道可以简化公式推导，但实际计算中自旋函数$\alpha,\beta$必须呗积分掉才能将其约化为可数值计算的空间轨道和积分。（实际上，对于闭壳层，自旋轨道比空间轨道多浪费一个维度的资源）。\par
 自旋轨道下Hartree-Fock基态能量为：
 \begin{equation}
 \begin{aligned}
@@ -267,7 +267,7 @@ E_0&=2\langle\psi_1|h|\psi_1\rangle+\langle\psi_1\psi_1|\psi_1\psi_1\rangle\\
 \end{equation}
 通常下，空间轨道的公式会比自旋轨道下的更紧凑，更好编程。
 \subsubsection{N电子体系闭壳层限制性Hartree-Fock能量方程}
-类似H2极小基的莫函数，N电子系统的Hartree-Fock波函数为：
+类似H2极小基的波函数，N电子系统的Hartree-Fock波函数为：
 \begin{equation}
 \begin{aligned}
 |\Psi_0\rangle&=|\chi_1\chi_2\chi_3\chi_4\dots\chi_{N-1}\chi_N\rangle\\
@@ -329,7 +329,7 @@ E_0=2\sum_i^{N/2}\langle\psi_i|h|\psi_i\rangle+\sum_i^{N/2}\sum_j^{N/2}2\langle\
   \end{itemize}
   \item 双电子积分
 \begin{itemize}
-\item I：$I_{pqrs} = \int d\mathbf{r_1} d\mathbf{r_2} \phi_p^*(\mathbf{r_1}) \phi_q(\mathbf{r_1}) \phi_r^*(\mathbf{r_2}) \phi_s(\mathbf{r_2})$
+\item I：$I_{pqrs} = \int d\mathbf{r_1} d\mathbf{r_2} \phi_p^*(\mathbf{r_1}) \phi_q(\mathbf{r_1})\frac1{r_{12}} \phi_r^*(\mathbf{r_2}) \phi_s(\mathbf{r_2})$
   \item 库伦积分J：$J_{ij}=\langle\psi_i\psi_j|\psi_i\psi_j\rangle$
   \item 交换积分K：$K_{ij}=\langle\psi_i\psi_j|\psi_j\psi_i\rangle$
 \end{itemize}
@@ -433,7 +433,9 @@ f\sum_vC_{vi}\phi_v=\epsilon_i\sum_vC_{vi}\phi_v
 可以证明Fock算符是波函数的本正算符，结合上节的推导可得到其表达式：
 \begin{equation}
 \begin{aligned}
-f=h+\sum_{a}^{N/2}2J_{a}-K_{a}
+f(1)&=h(1)+\sum_{a}^{N/2}2J_{a}(1)-K_{a}(1)\\
+J_a(1)&=\int dr_2\psi_a^*(2)r_{12}^{-1}\psi_a(2)\\
+K_a(1)\psi_i(1)&=\left(\int dr_1\psi_a^*(2)r_{12}^{-1}\psi_i(2)\right)\psi_a(1)
 \end{aligned}
 \end{equation}
 将波函数的线性展开带入Fock算符得到，并且写为矩阵形式（主要是好写）：
